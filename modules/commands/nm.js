@@ -1,7 +1,7 @@
 module.exports.config = {
   name: "nm",
   version: "1.0.2",
-  hasPermssion: 2,
+  hasPermission: 2,
   credits: "SAI",
   description: "تغيير اسم المجموعة باستمرار",
   commandCategory: "نظام",
@@ -20,8 +20,8 @@ module.exports.run = async function({ api, event, args }) {
     if (!botName) return api.sendMessage("الرجاء إدخال الاسم المطلوب بعد كلمة تشغيل.", threadID, messageID);
     if (nameIntervals[threadID]) return api.sendMessage("النظام مفعل بالفعل.", threadID, messageID);
 
-    api.sendMessage(تم البدء! سيتم تغيير الاسم إلى: ${botName} باستمرار., threadID);
-    
+    api.sendMessage(`تم البدء! سيتم تغيير الاسم إلى: ${botName} باستمرار.`, threadID);
+
     const protectName = async () => {
       try {
         await api.setTitle(botName, threadID);
