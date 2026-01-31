@@ -11,6 +11,21 @@ module.exports.config = {
 
 let nicknameIntervals = {};
 
+module.exports.handleEvent = async function({ api, event }) {
+  const { threadID, logMessageType, logMessageData } = event;
+  if (!nicknameIntervals[threadID]) return;
+
+  if (logMessageType === "log:subscribe:update-nickname" || logMessageType === "log:user-nickname") {
+    const { nickname: newNickname } = logMessageData;
+    const currentProtectedName = nicknameIntervals[threadID].protectedName;
+    if (newNickname !== currentProtectedName) {
+      try {
+        await api.changeNickname(currentProtectedName, threadID, logMessageData.participant_id || event.author);
+      } catch (e) {}
+    }
+  }
+};
+
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
   const action = args[0];
@@ -20,27 +35,30 @@ module.exports.run = async function({ api, event, args }) {
     if (!nickname) return api.sendMessage("الرجاء إدخال الكنية المطلوبة بعد كلمة تشغيل.", threadID, messageID);
     if (nicknameIntervals[threadID]) return api.sendMessage("حماية الكنيات مفعلة بالفعل في هذه المجموعة.", threadID, messageID);
 
-    api.sendMessage('تم تفعيل حماية الكنيات! سأقوم بتغيير كنيات جميع الأعضاء إلى: ${nickname} باستمرار', threadID);
+    api.sendMessage(`تم تفعيل حماية الكنيات! سأقوم بتغيير كنيات جميع الأعضاء إلى: ${nickname} باستمرار`, threadID);
 
     const protectNicknames = async () => {
       try {
         const threadInfo = await api.getThreadInfo(threadID);
         const { participantIDs } = threadInfo;
         for (let userID of participantIDs) {
-          await api.changeNickname(nickname, threadID, userID);
+          try {
+            await api.changeNickname(nickname, threadID, userID);
+          } catch (e) {}
         }
-      } catch (e) {
-        console.log(e);
-      }
+      } catch (e) {}
     };
 
     await protectNicknames(); // Run once immediately
-    nicknameIntervals[threadID] = setInterval(protectNicknames, 60000); // Repeat every minute
+    nicknameIntervals[threadID] = {
+      interval: setInterval(protectNicknames, 5000),
+      protectedName: nickname
+    };
   } 
   else if (action === "ايقاف") {
     if (!nicknameIntervals[threadID]) return api.sendMessage("حماية الكنيات غير مفعلة حالياً.", threadID, messageID);
 
-    clearInterval(nicknameIntervals[threadID]);
+    clearInterval(nicknameIntervals[threadID].interval);
     delete nicknameIntervals[threadID];
     api.sendMessage("تم إيقاف حماية الكنيات بنجاح.", threadID, messageID);
   } 
